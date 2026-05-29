@@ -1,10 +1,10 @@
 ﻿#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-// ���� � ������������ WinSOCK ������������ ���� <Windows.h>
-// ��� <IPhlpAPI.h> �� ��� ���� ���������� ���� <WinSOCK2.h> ���
-// �������� � ���������� .
-// ��� ���� ����� <Windows.h> � <IPhlpAPI.h> �� �����������
-// WinSOCK, �������� ����������������.
+#define WIN32_LEAN_AND_MEAN 
+// если с бибилиотекой WinSOCK подключается файл <Windows.h>
+// или <IPhlpAPI.h> то они тоже подключают файл <WinSOCK2.h> что
+// приводит к конфликтам .
+// Для того чтобы <Windows.h> и <IPhlpAPI.h> не подтягивали
+// WinSOCK, создаётся макроопределение.
 #endif // !WIN32_LEAN_AND_MEAN
 
 
@@ -15,15 +15,15 @@
 #include <iphlpapi.h>
 using namespace std;
 
-#pragma comment(lib , "WS2_32.lib") // ��������� �����������
-// ����������, ��� ��������� <WS2TCPIP.h>
-#define MTU 1500 // Maximum Transfer Unit - �����������-��������� ������ Ethernet-�����
+#pragma comment(lib , "WS2_32.lib") // втраиваем статическую
+// библиотеку, для заголовка <WS2TCPIP.h>
+#define MTU 1500 // Maximum Transfer Unit - Максимально-возможный размер Ethernet-кадра
 
 void main()
 {
 	setlocale(LC_ALL, "");
 
-	//1) ������������� WinSOCK
+	//1) Инициализация WinSOCK
 	WSAData wsaData;
 	int iResult = 0;
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -33,13 +33,13 @@ void main()
 		return;
 	}
 
-	//2) ���������� ��������� �����������:
+	//2) Определяем параметры подключения:
 	addrinfo hints;
 	addrinfo* target;
-	ZeroMemory(&hints, sizeof(hints));	// �������� ��������� ��������� 
-	hints.ai_family = AF_INET;			//���� ��������� TCP/IPv4 
+	ZeroMemory(&hints, sizeof(hints));	// Обнуляем экземпляр структуры 
+	hints.ai_family = AF_INET;			//Стек протколов TCP/IPv4 
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;	// ���������� �������� ������������� ������ 
+	hints.ai_protocol = IPPROTO_TCP;	// Определяем протокол транспортного уровня 
 	iResult = getaddrinfo("127.0.0.1","27015",&hints,&target);
 	if(iResult != 0)
 	{
@@ -48,7 +48,7 @@ void main()
 		WSACleanup();
 		return;
 	}
-	//3) ������ �����:
+	//3) Создаём сокет:
 	SOCKET connect_socket = 
 		socket (
 					target->ai_family ,
@@ -63,7 +63,7 @@ void main()
 		return;
 	}
 	
-	//4) ������������ � ����:
+	//4) Подключаемся к узлу:
 	iResult = connect(connect_socket, target->ai_addr, target->ai_addrlen);
 	freeaddrinfo(target);
 	if(iResult == SOCKET_ERROR)
@@ -74,7 +74,7 @@ void main()
 		return;
 	}
 
-	//5) ��������:
+	//5) Отправка:
 	CHAR send_buffer[MTU] = "Hello Server";
 	iResult = send(connect_socket,send_buffer , strlen(send_buffer),0);
 	
@@ -85,7 +85,7 @@ void main()
 		WSACleanup();
 		return;
 	}
-	//6) ��������� ������:
+	//6) Получение данных:
 	CHAR recv_buffer[MTU] = {};
 	do
 	{
@@ -97,11 +97,11 @@ void main()
 		else cout << "Receive failed with error " << WSAGetLastError() << endl;
 		
 	} while (iResult > 0);
-	iResult = shutdown(connect_socket, SD_BOTH); // ��������� ����� �� ��������� � �������� ������ (��������� TCP-����������) :
+	iResult = shutdown(connect_socket, SD_BOTH); // Закрываем сокет на получение и отправку данных (разрываем TCP-соединение) :
 	if (iResult == SOCKET_ERROR)
 		cout << "Shutdown failed with error " << WSAGetLastError() << endl;
 
-	//7) ����������� ������� WinSOCK
+	//7) Освобождаем ресурсы WinSOCK
 	closesocket(connect_socket);
 	WSACleanup();
 }
