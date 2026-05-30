@@ -1,4 +1,5 @@
-﻿#ifndef WIN32_LEAN_AND_MEAN
+﻿//Client
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 
 // если с бибилиотекой WinSOCK подключается файл <Windows.h>
 // или <IPhlpAPI.h> то они тоже подключают файл <WinSOCK2.h> что
@@ -22,6 +23,7 @@ using namespace std;
 void main()
 {
 	setlocale(LC_ALL, "");
+	cout << "Client\n\n";
 
 	//1) Инициализация WinSOCK
 	WSAData wsaData;
@@ -68,6 +70,10 @@ void main()
 	freeaddrinfo(target);
 	if(iResult == SOCKET_ERROR)
 	{
+		cout << "Error: " << WSAGetLastError() << ":\t";
+		// WSAGetLastError в обязательном порядке должна быть
+		// после вызова функции которая потенциально может
+		// выполнится с ошибкой.
 		cout << "Unable to connect to server" << endl;
 		closesocket(connect_socket);
 		WSACleanup();
