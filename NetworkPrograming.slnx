@@ -3,6 +3,11 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="FormatErrorLib.h" />
+    <File Path="FormatErrorLib.lib" />
+  </Folder>
   <Project Path="Client/Client.vcxproj" Id="1f12a5cd-d5ad-4c39-9a38-eb0a6dd742c4" />
+  <Project Path="FormatErrorLib/FormatErrorLib.vcxproj" Id="6cfa490c-094a-420c-832c-13a987648968" />
   <Project Path="Server/Server.vcxproj" Id="f83a832a-bb55-45b2-abbd-f0a9f4353721" />
 </Solution>

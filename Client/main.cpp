@@ -14,9 +14,11 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
+#include "../FormatErrorLib.h"
 using namespace std;
 
 #pragma comment(lib , "WS2_32.lib") // втраиваем статическую
+#pragma comment(lib , "../FormatErrorLib.lib")
 // библиотеку, для заголовка <WS2TCPIP.h>
 #define MTU 1500 // Maximum Transfer Unit - Максимально-возможный размер Ethernet-кадра
 
@@ -70,7 +72,8 @@ void main()
 	freeaddrinfo(target);
 	if(iResult == SOCKET_ERROR)
 	{
-		cout << "Error: " << WSAGetLastError() << ":\t";
+		short error_code = WSAGetLastError();
+		cout << "Error: " << error_code << " : " << FormatLastError(error_code, false) << '\n' << FormatLastError(error_code, true) << ":\t";
 		// WSAGetLastError в обязательном порядке должна быть
 		// после вызова функции которая потенциально может
 		// выполнится с ошибкой.
