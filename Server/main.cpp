@@ -13,7 +13,7 @@
 using namespace std;
 
 #pragma comment(lib , "WS2_32.lib")
-#pragma comment(lib , "../FormatErrorLib.lib")
+#pragma comment(lib , "../lib/FormatErrorLib.lib")
 
 #define MTU 1500
 
