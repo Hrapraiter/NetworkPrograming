@@ -20,10 +20,15 @@ using namespace std;
 // библиотеку, для заголовка <WS2TCPIP.h>
 #define MTU 1500 // Maximum Transfer Unit - Максимально-возможный размер Ethernet-кадра
 
+CHAR* FormatLastError(DWORD dwError, CHAR szError[]);
+
 void main()
 {
 	setlocale(LC_ALL, "");
 	cout << "Client\n\n";
+
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
 
 	//1) Инициализация WinSOCK
 	WSAData wsaData;
@@ -57,9 +62,11 @@ void main()
 					target->ai_socktype ,
 					target->ai_protocol
 				);
+	dwError = WSAGetLastError();
 	if(connect_socket == INVALID_SOCKET)
 	{
-		cout << "SOCKET creation failed with error:\t" << WSAGetLastError() << endl;
+		cout << "SOCKET creation failed with error:\t" << dwError << endl;
+		cout << FormatLastError(dwError, szError) << endl;
 		freeaddrinfo(target);
 		WSACleanup();
 		return;
@@ -67,10 +74,14 @@ void main()
 	
 	//4) Подключаемся к узлу:
 	iResult = connect(connect_socket, target->ai_addr, target->ai_addrlen);
+	dwError = WSAGetLastError();
 	freeaddrinfo(target);
 	if(iResult == SOCKET_ERROR)
 	{
-		cout << "Error: " << WSAGetLastError() << ":\t";
+		//cout << "Error: " << dwError << ":\t";
+		
+		cout << FormatLastError(dwError , szError) << endl;
+		//cout << lpError << '\n';
 		// WSAGetLastError в обязательном порядке должна быть
 		// после вызова функции которая потенциально может
 		// выполнится с ошибкой.
@@ -83,10 +94,11 @@ void main()
 	//5) Отправка:
 	CHAR send_buffer[MTU] = "Hello Server";
 	iResult = send(connect_socket,send_buffer , strlen(send_buffer),0);
-	
+	dwError = WSAGetLastError();
 	if(iResult == SOCKET_ERROR)
 	{
-		cout << "Send failed with error: " << WSAGetLastError() << endl;
+		cout << "Send failed with error: " << dwError << endl;
+		cout << FormatLastError(dwError, szError);
 		closesocket(connect_socket);
 		WSACleanup();
 		return;
@@ -96,18 +108,39 @@ void main()
 	do
 	{
 		iResult = recv(connect_socket, recv_buffer, MTU, 0);
-		if (iResult > 0)
-
-			cout << "Bytes received: " << iResult << "Message: " << recv_buffer << endl;
-		else if (iResult == 0)cout << "Connection closed" << endl;
-		else cout << "Receive failed with error " << WSAGetLastError() << endl;
+		dwError = WSAGetLastError();
+		if (iResult > 0)		cout << "Bytes received: " << iResult << "Message: " << recv_buffer << endl;
+		else if (iResult == 0)	cout << "Connection closed" << endl;
+		else					cout << "Receive failed with error " << FormatLastError(dwError , szError) << endl;
 		
 	} while (iResult > 0);
+
 	iResult = shutdown(connect_socket, SD_BOTH); // Закрываем сокет на получение и отправку данных (разрываем TCP-соединение) :
 	if (iResult == SOCKET_ERROR)
-		cout << "Shutdown failed with error " << WSAGetLastError() << endl;
+		cout << "Shutdown failed with error " << FormatLastError(WSAGetLastError() , szError) << endl;
 
 	//7) Освобождаем ресурсы WinSOCK
 	closesocket(connect_socket);
 	WSACleanup();
+}
+
+CHAR* FormatLastError(DWORD dwError, CHAR szError[])
+{
+	LPSTR lpError = NULL;
+	FormatMessage
+	(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dwError,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&lpError,
+		0,
+		NULL
+	);
+	//strcpy(szError, lpError);
+	sprintf(szError, "Error %i:%s" , dwError , lpError);
+	LocalFree(lpError);
+	return szError;
 }
