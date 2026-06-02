@@ -71,7 +71,7 @@ void main()
 	iResult = connect(connect_socket, target->ai_addr, target->ai_addrlen);
 	freeaddrinfo(target);
 	if(iResult == SOCKET_ERROR)
-	{
+	{/////////////////////////////////////////////// ТУТ ПРАВКА ////////
 		short error_code = WSAGetLastError();
 		cout << "Error: " << error_code << " : " << FormatLastError(error_code, false) << '\n' << FormatLastError(error_code, true) << ":\t";
 		// WSAGetLastError в обязательном порядке должна быть

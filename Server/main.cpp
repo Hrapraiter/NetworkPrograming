@@ -20,6 +20,7 @@ using namespace std;
 void main()
 {
 	setlocale(LC_ALL, "");
+	cout << "Test Error Description 10061 : " << FormatLastError(10061, false) << "\n\n";
 	//1) Инициализация WinSOCK:
 	cout << "Server\n\n";
 
