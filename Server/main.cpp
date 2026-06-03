@@ -20,6 +20,10 @@ void main()
 {
 	setlocale(LC_ALL, "");
 	//1) Инициализация WinSOCK:
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
+
+
 	cout << "Server\n\n";
 
 	WSADATA wsaDATA;
@@ -60,8 +64,8 @@ void main()
 
 	if (listen_socket == INVALID_SOCKET)
 	{
-		cout << "SOCKET creation failed with error: " << WSAGetLastError() << endl; \
-			freeaddrinfo(target);
+		cout << "SOCKET creation failed with " << FormatLastError((dwError = WSAGetLastError()) , szError) << endl; 
+		freeaddrinfo(target);
 		WSACleanup();
 		return;
 	}
@@ -71,7 +75,7 @@ void main()
 
 	if (iResult != 0)
 	{
-		cout << "bind failed with error: " << WSAGetLastError() << endl;
+		cout << "bind failed with " << FormatLastError((dwError = WSAGetLastError()) , szError) << endl;
 		closesocket(listen_socket);
 		freeaddrinfo(target);
 		WSACleanup();
@@ -89,45 +93,60 @@ void main()
 	}
 
 	//6) Принимаем подключение от клиента
-	SOCKET client_socket = accept(listen_socket, NULL, NULL);
+	
 
+	SOCKET client_socket = accept(listen_socket, NULL, NULL);
 	if (client_socket == INVALID_SOCKET)
 	{
-		cout << "Accept failed with error: " << WSAGetLastError() << endl;
+		cout << "Accept failed with " << FormatLastError((dwError = WSAGetLastError()) , szError) << endl;
 		closesocket(listen_socket);
 		freeaddrinfo(target);
 		WSACleanup();
 		return;
 	}
-
+	sockaddr_in client_sockaddr;// буфер для хранения клиента
+	int client_addrLen = sizeof(client_sockaddr); // размер буфера
+	iResult = getpeername(client_socket, (sockaddr*)&client_sockaddr, &client_addrLen); // заполнение буфера клиента
+	CHAR ip_buffer[INET_ADDRSTRLEN] = {}; // INET_ADDRSTRLEN = 22 хотя в теории должен быть 16 
+	DWORD port = 0; 
+	if(iResult == 0)
+	{
+		inet_ntop(AF_INET, &client_sockaddr.sin_addr, ip_buffer, INET_ADDRSTRLEN);	// приводит бинарное представление адреса к строковому формату
+																					// заполняя буфер под строку  
+		port = ntohs(client_sockaddr.sin_port); // ntohs нужен для чтения 16 битных значений 
+	}
+	cout << "Connect : " << ip_buffer << ':' << port << "\n\n";
 	//7) Получаем данные от клиента:
+	
 	CHAR recv_buffer[MTU] = {};
-	CHAR send_buffer[MTU] = "\x1b[32mHello Client\x1b[0m";
+	CHAR send_buffer[MTU] = "Hello Client";
 	INT iReceivedBytes = 0;
 	INT iSendBytes = 0;
 
 	do
 	{
 		iReceivedBytes = recv(client_socket, recv_buffer, MTU, 0);
+		dwError = WSAGetLastError();
 		if (iReceivedBytes > 0)
 		{
 			cout << "Received " << iReceivedBytes << " " << recv_buffer << endl;
 			iSendBytes = send(client_socket, send_buffer, strlen(send_buffer), 0);
 			if (iSendBytes == SOCKET_ERROR)
-				cout << "Send failed with error:\t" << WSAGetLastError() << endl;
+				cout << "Send failed with " << FormatLastError(dwError , szError) << endl;
 			else cout << iSendBytes << " Bytes sent" << endl;
 		}
 		else if (iReceivedBytes == 0)cout << "Connection closing..." << endl;
-		else cout << "Receive failed with error: " << WSAGetLastError() << endl;
+		else cout << "Receive failed with " << FormatLastError(dwError , szError) << endl;
 
 	} while (iReceivedBytes > 0);
 
 	//8) Разрываем TCP-соединение 
 	iResult = shutdown(client_socket, SD_BOTH);
 	if(iResult != SOCKET_ERROR)
-		cout << "shutdown failed with error:\t" << WSAGetLastError() << endl;
+		cout << "shutdown failed with error:\t" << FormatLastError((dwError = WSAGetLastError()) , szError) << endl;
 	
 	//?) Освобождаем ресурсы занятые WinSOCK:
+	
 	closesocket(listen_socket);
 	freeaddrinfo(target);
 	WSACleanup();

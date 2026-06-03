@@ -47,7 +47,15 @@ void main()
 	hints.ai_family = AF_INET;			//Стек протколов TCP/IPv4 
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;	// Определяем протокол транспортного уровня 
-	iResult = getaddrinfo("127.0.0.1","27015",&hints,&target);
+
+	CHAR ip[INET_ADDRSTRLEN] = {};
+	CHAR port[6] = {};
+
+	cout << "ip : "; cin >> ip;
+	cout << "port : "; cin >> port;
+
+	//iResult = getaddrinfo("127.0.0.1","27015",&hints,&target);
+	iResult = getaddrinfo(ip, port , &hints, &target);
 	if(iResult != 0)
 	{
 		cout << "getaddressinfo() failed with code " << iResult << endl;
@@ -104,7 +112,7 @@ void main()
 	{
 		iResult = recv(connect_socket, recv_buffer, MTU, 0);
 		dwError = WSAGetLastError();
-		if (iResult > 0)		cout << "Bytes received: " << iResult << "Message: " << recv_buffer << endl;
+		if (iResult > 0)		cout << "Bytes received: " << iResult << " Message: " << recv_buffer << endl;
 		else if (iResult == 0)	cout << "Connection closed" << endl;
 		else					cout << "Receive failed with error " << FormatLastError(dwError , szError) << endl;
 		
