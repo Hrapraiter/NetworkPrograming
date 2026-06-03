@@ -6,9 +6,7 @@
 .vs/
 
 # User-specific files
-*.rsuser
 *.suo
-*.user
 *.userosscache
 *.sln.docstates
 *.env
@@ -386,7 +384,6 @@ MSBuild_Logs/
 .aws-sam
 
 # NVidia Nsight GPU debugger configuration file
-*.nvuser
 
 # MFractors (Xamarin productivity tool) working folder
 **/.mfractor/

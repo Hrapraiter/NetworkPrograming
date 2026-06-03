@@ -56,12 +56,7 @@ void main()
 		return;
 	}
 	//3) Создаём сокет:
-	SOCKET connect_socket = 
-		socket (
-					target->ai_family ,
-					target->ai_socktype ,
-					target->ai_protocol
-				);
+	SOCKET connect_socket = socket (target->ai_family ,target->ai_socktype ,target->ai_protocol);
 	dwError = WSAGetLastError();
 	if(connect_socket == INVALID_SOCKET)
 	{
