@@ -1,4 +1,5 @@
 ﻿//Server
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif 
@@ -60,8 +61,8 @@ void main()
 
 	if (listen_socket == INVALID_SOCKET)
 	{
-		cout << "SOCKET creation failed with error: " << WSAGetLastError() << endl; \
-			freeaddrinfo(target);
+		cout << "SOCKET creation failed with error: " << WSAGetLastError() << endl;
+		freeaddrinfo(target);
 		WSACleanup();
 		return;
 	}
@@ -89,8 +90,9 @@ void main()
 	}
 
 	//6) Принимаем подключение от клиента
-	SOCKET client_socket = accept(listen_socket, NULL, NULL);
-
+	SOCKADDR_IN client_address;
+	INT client_address_len = sizeof(client_address);
+	SOCKET client_socket = accept(listen_socket, (SOCKADDR*)&client_address, &client_address_len);
 	if (client_socket == INVALID_SOCKET)
 	{
 		cout << "Accept failed with error: " << WSAGetLastError() << endl;
@@ -99,10 +101,10 @@ void main()
 		WSACleanup();
 		return;
 	}
-
+	cout << inet_ntoa(client_address.sin_addr) << ':' << ntohs(client_address.sin_port) << '\n';
 	//7) Получаем данные от клиента:
 	CHAR recv_buffer[MTU] = {};
-	CHAR send_buffer[MTU] = "\x1b[32mHello Client\x1b[0m";
+	CHAR send_buffer[MTU] = "Hello Client";
 	INT iReceivedBytes = 0;
 	INT iSendBytes = 0;
 
