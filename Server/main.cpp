@@ -103,18 +103,18 @@ void main()
 	}
 	cout << inet_ntoa(client_address.sin_addr) << ':' << ntohs(client_address.sin_port) << '\n';
 	//7) Получаем данные от клиента:
-	CHAR recv_buffer[MTU] = {};
 	CHAR send_buffer[MTU] = "Hello Client";
 	INT iReceivedBytes = 0;
 	INT iSendBytes = 0;
 
 	do
 	{
+		CHAR recv_buffer[MTU] = {};
 		iReceivedBytes = recv(client_socket, recv_buffer, MTU, 0);
 		if (iReceivedBytes > 0)
 		{
 			cout << "Received " << iReceivedBytes << " " << recv_buffer << endl;
-			iSendBytes = send(client_socket, send_buffer, strlen(send_buffer), 0);
+			iSendBytes = send(client_socket, recv_buffer, strlen(recv_buffer), 0);
 			if (iSendBytes == SOCKET_ERROR)
 				cout << "Send failed with error:\t" << WSAGetLastError() << endl;
 			else cout << iSendBytes << " Bytes sent" << endl;
@@ -122,6 +122,7 @@ void main()
 		else if (iReceivedBytes == 0)cout << "Connection closing..." << endl;
 		else cout << "Receive failed with error: " << WSAGetLastError() << endl;
 
+	
 	} while (iReceivedBytes > 0);
 
 	//8) Разрываем TCP-соединение 
