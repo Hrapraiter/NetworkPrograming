@@ -44,7 +44,7 @@ struct Client
 		cout << "Connect " << ip_buffer << ':' << port << endl;
 		session = thread([this] {logic(); });
 	}
-	Client(Client&& client)noexcept
+	/*Client(Client&& client)noexcept
 	{
 
 		client_socket = exchange(client.client_socket, INVALID_SOCKET);
@@ -82,7 +82,7 @@ struct Client
 			iSendBytes = exchange(client.iSendBytes, 0);
 		}
 		return *this;
-	}
+	}*/
 	Client(const Client&) = delete;
 	Client& operator=(const Client&) = delete;
 	~Client()
@@ -114,7 +114,7 @@ private:
 			iReceivedBytes = recv(client_socket, recv_buffer, MTU, 0);
 			if (iReceivedBytes > 0)
 			{
-				cout << "Received " << iReceivedBytes << " " << recv_buffer << endl;
+				cout << "Received " << iReceivedBytes << "\n " << ip_buffer << ':' << port << " -> " << recv_buffer << endl;
 				iSendBytes = send(client_socket, recv_buffer, strlen(recv_buffer), 0);
 				if (iSendBytes == SOCKET_ERROR)
 					cout << "Send failed with error:\t" << WSAGetLastError() << endl;
@@ -130,7 +130,6 @@ list<Client> clients;
 bool isWork = true;
 void client_listener(SOCKET listen_socket)
 {
-
 	while (isWork)
 	{
 		SOCKET client_socket = accept(listen_socket, NULL, NULL);
