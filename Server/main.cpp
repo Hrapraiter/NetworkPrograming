@@ -122,14 +122,14 @@ void main()
 		else if (iReceivedBytes == 0)cout << "Connection closing..." << endl;
 		else cout << "Receive failed with error: " << WSAGetLastError() << endl;
 
-	
+
 	} while (iReceivedBytes > 0);
 
 	//8) Разрываем TCP-соединение 
 	iResult = shutdown(client_socket, SD_BOTH);
-	if(iResult != SOCKET_ERROR)
+	if (iResult != SOCKET_ERROR)
 		cout << "shutdown failed with error:\t" << WSAGetLastError() << endl;
-	
+
 	//?) Освобождаем ресурсы занятые WinSOCK:
 	closesocket(listen_socket);
 	freeaddrinfo(target);
