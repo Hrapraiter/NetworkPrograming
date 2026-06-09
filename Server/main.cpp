@@ -10,13 +10,14 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include <FormatLastError.h>
-
+#include <Messages.h>
 using namespace std;
 
 #pragma comment(lib , "WS2_32.lib") 
 
 #define MTU					 1500
 #define MAX_CONNECTIONS			3
+#define DECLINE_MESSAGE	     "Подключение невозможно, поскольку все места заняты, попробуйте позже"
 
 SOCKET	client_sockets[MAX_CONNECTIONS] = {};
 DWORD	dwThreadIDs[MAX_CONNECTIONS] = {};		// Идентификаторы потоков
@@ -30,6 +31,8 @@ void main()
 {
 	setlocale(LC_ALL, "");
 	//1) Инициализация WinSOCK:
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
 	cout << "Server\n\n";
 
 	WSADATA wsaDATA;
@@ -89,7 +92,7 @@ void main()
 	}
 
 	//5) Запускаем прослушивание порта:
-	if (listen(listen_socket, 1) == SOCKET_ERROR)// 1 максимальное колличество одновременно подключенных клиентов
+	if (listen(listen_socket, MAX_CONNECTIONS) == SOCKET_ERROR)// 1 максимальное колличество одновременно подключенных клиентов
 	{
 		cout << "Listen failed with error: " << WSACleanup() << endl;
 		closesocket(listen_socket);
@@ -115,17 +118,34 @@ void main()
 		cout << inet_ntoa(client_address.sin_addr) << ':' << ntohs(client_address.sin_port) << '\n';
 		//7) Получаем данные от клиента:
 		//ClientHandle(client_socket);
-		client_sockets[g_ActiveClients] = client_socket;
-		hThreads[g_ActiveClients] = CreateThread
-		(
-			NULL,
-			0,
-			(LPTHREAD_START_ROUTINE)ClientHandle,
-			(LPVOID)client_sockets[g_ActiveClients],
-			NULL,
-			&dwThreadIDs[g_ActiveClients]
-		);
-		g_ActiveClients++;
+		if (g_ActiveClients < MAX_CONNECTIONS)
+		{
+			client_sockets[g_ActiveClients] = client_socket;
+			hThreads[g_ActiveClients] = CreateThread
+			(
+				NULL,
+				0,
+				(LPTHREAD_START_ROUTINE)ClientHandle,
+				(LPVOID)client_sockets[g_ActiveClients],
+				NULL,
+				&dwThreadIDs[g_ActiveClients]
+			);
+			g_ActiveClients++;
+		}
+		else
+		{
+			cout << "DECLINED" << endl;
+			iResult = send(client_socket ,DECLINE_MESSAGE,strlen(DECLINE_MESSAGE) , 0);
+			dwError = WSAGetLastError();
+			if(iResult != 0)cout << FormatLastError(dwError, szError) << '\n';
+			iResult = shutdown(client_socket, SD_BOTH);
+			dwError = WSAGetLastError();
+			if(iResult != 0)cout << FormatLastError(dwError , szError) <<'\n';
+
+			closesocket(client_socket);				   
+			dwError = WSAGetLastError();
+			if (iResult != 0)cout << FormatLastError(dwError, szError) << '\n';
+		}
 	} while (true);
 
 	WaitForMultipleObjects(g_ActiveClients, hThreads, TRUE, INFINITE);

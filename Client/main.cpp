@@ -14,6 +14,7 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include <FormatLastError.h>
+#include <Messages.h>
 
 using namespace std;
 
@@ -88,8 +89,10 @@ void main()
 
 	//5) Отправка:
 	CHAR send_buffer[MTU] = "Hello Server";
+	CHAR recv_buffer[MTU] = {};
 	do
 	{
+		ZeroMemory(recv_buffer, MTU);
 		iResult = send(connect_socket, send_buffer, strlen(send_buffer), 0);
 		dwError = WSAGetLastError();
 		if (iResult == SOCKET_ERROR)
@@ -101,7 +104,6 @@ void main()
 			return;
 		}
 		//6) Получение данных:
-		CHAR recv_buffer[MTU] = {};
 		//do
 		{
 			iResult = recv(connect_socket, recv_buffer, MTU, 0);
@@ -112,12 +114,12 @@ void main()
 
 		} //while (iResult > 0);
 		ZeroMemory(send_buffer, MTU);
-		ZeroMemory(recv_buffer, MTU);
-		cout << "Введите сообщение: ";
+		if (strcmp(recv_buffer, DECLINE_MESSAGE) != 0)cout << "Введите сообщение: ";
+		else cout << "Для выхода нажмите 'Enter'" << '\n';
 		SetConsoleCP(1251);
 		cin.getline(send_buffer, MTU);
 		SetConsoleOutputCP(851);
-	} while (strcmp(send_buffer , "exit") != 0);
+	} while (strcmp(send_buffer , "exit") != 0 && strcmp(recv_buffer , DECLINE_MESSAGE) != 0);
 
 	iResult = shutdown(connect_socket, SD_BOTH); // Закрываем сокет на получение и отправку данных (разрываем TCP-соединение) :
 	if (iResult == SOCKET_ERROR)
