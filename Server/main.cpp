@@ -131,18 +131,19 @@ void main()
 				&dwThreadIDs[g_ActiveClients]
 			);
 			g_ActiveClients++;
-			ShowActiveClients();
+			//ShowActiveClients();
+			Sleep(10);
+			cout << "Колличество клинентов: " << g_ActiveClients << endl;
 		}
 		else
 		{
 			cout << "DECLINED" << endl;
 			iResult = send(client_socket ,DECLINE_MESSAGE,strlen(DECLINE_MESSAGE) , 0);
 			dwError = WSAGetLastError();
-			if(iResult != 0)cout << FormatLastError(dwError, szError) << '\n';
+			if (iResult != 0)cout << FormatLastError(dwError, szError) << '\n';
 			iResult = shutdown(client_socket, SD_BOTH);
 			dwError = WSAGetLastError();
-			if(iResult != 0)cout << FormatLastError(dwError , szError) <<'\n';
-
+			if (iResult != 0)cout << FormatLastError(dwError, szError) << '\n';
 			closesocket(client_socket);				   
 			dwError = WSAGetLastError();
 			if (iResult != 0)cout << FormatLastError(dwError, szError) << '\n';
@@ -157,7 +158,7 @@ void main()
 	freeaddrinfo(target);
 	WSACleanup();
 }
-INT GetThreadIndex(DWORD dwThreadID)
+INT GetClientIndex(DWORD dwThreadID)
 {
 	for(INT i = 0;i < g_ActiveClients;i++)
 		if (dwThreadID == dwThreadIDs[i])return i;
@@ -178,18 +179,26 @@ VOID Shift(INT index)
 	hThreads[MAX_CONNECTIONS - 1] = NULL;
 	g_ActiveClients--;
 	ShowActiveClients();
+	
 }
-BOOL IsShowActiveCients = false; // 1
 VOID ShowActiveClients()
 {
-	IsShowActiveCients = true; // 2
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_SCREEN_BUFFER_INFO info;
 	GetConsoleScreenBufferInfo(hConsole, &info);
 	SetConsoleCursorPosition(hConsole, { 25 , 0 });
 	cout << "Колличество клиентов: " << g_ActiveClients << '\n';
 	SetConsoleCursorPosition(hConsole, info.dwCursorPosition);
-	IsShowActiveCients = false; // 3
+	Sleep(10);
+}
+VOID Broadcast(CHAR sz_message[], INT client_index)
+{
+	INT iResult = 0;
+	for(INT i = 0; i < g_ActiveClients;i++)
+	{
+		if (i != client_index)
+			iResult = send(client_sockets[i], sz_message, strlen(sz_message), NULL);
+	}
 }
 VOID ClientHandle(SOCKET client_socket) 
 {
@@ -202,34 +211,34 @@ VOID ClientHandle(SOCKET client_socket)
 	INT iSendBytes = 0;
 
 	CHAR recv_buffer[MTU] = {};
-	while (IsShowActiveCients); // 4 решение в 4 строки просто ждём пока ShowActiveClients отработает
-								//  до конца в основном потоке программы чтобы не воевать с текущим 
-								//  потоком за кисть окна консоли
+	
 	do
 	{
 		ZeroMemory(recv_buffer, MTU);
 		iReceivedBytes = recv(client_socket, recv_buffer, MTU, 0);
 		dwError = WSAGetLastError();
 		if (iReceivedBytes > 0)
+			Broadcast(recv_buffer, GetClientIndex(GetCurrentThreadId()));
 		{
+			/*
 			cout << "Received " << iReceivedBytes << " " << recv_buffer << endl;
 			iSendBytes = send(client_socket, recv_buffer, strlen(recv_buffer), 0);
-			if (iSendBytes == SOCKET_ERROR)
-				cout << "Send failed with error:\t" << FormatLastError(dwError , szError) << endl;
+			if (iSendBytes == SOCKET_ERROR)cout << "Send failed with error:\t" << FormatLastError(dwError , szError) << endl;
 			else cout << iSendBytes << " Bytes sent" << endl;
+			*/
 		}
 		//else if (iReceivedBytes == 0)cout << "Connection closing..." << endl;
-		else cout << "Receive failed with error: " << FormatLastError(dwError , szError) << endl;
-
+		//else cout << "Receive failed with error: " << FormatLastError(dwError, szError) << endl;
+		
 
 	} while (iReceivedBytes > 0 && strcmp(recv_buffer, "exit") != 0);
 
 	//8) Разрываем TCP-соединение 
 	iResult = shutdown(client_socket, SD_BOTH);
 	dwError = WSAGetLastError();
-	if (iResult != SOCKET_ERROR)
-		cout << "shutdown failed with error:\t" << FormatLastError(dwError , szError) << endl;
+	if (iResult != SOCKET_ERROR)cout << "shutdown failed with error:\t" << FormatLastError(dwError , szError) << endl;
+	
 	closesocket(client_socket);
-	Shift(GetThreadIndex(GetCurrentThreadId()));
+	Shift(GetClientIndex(GetCurrentThreadId()));
 	ExitThread(0);
 }
