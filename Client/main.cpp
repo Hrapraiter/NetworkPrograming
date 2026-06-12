@@ -144,9 +144,9 @@ VOID Receive(SOCKET connect_socket)
 	DWORD dwError = 0;
 	CHAR szError[256] = {};
 
-	ZeroMemory(recv_buffer, MTU);
 	do
 	{
+		ZeroMemory(recv_buffer, MTU);
 		iResult = recv(connect_socket, recv_buffer, MTU, 0);
 		dwError = WSAGetLastError();
 		if (iResult > 0)		cout << "Bytes received: " << iResult << "Message: " << recv_buffer << endl;

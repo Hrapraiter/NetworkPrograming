@@ -1,5 +1,6 @@
 ﻿//Server
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif 
@@ -9,6 +10,8 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
+#include <mutex>
+#include <queue>
 #include <FormatLastError.h>
 #include <Messages.h>
 using namespace std;
@@ -24,8 +27,22 @@ HANDLE	hThreads[MAX_CONNECTIONS] = {};			// Дескрипторы потоко�
 
 INT g_ActiveClients = 0;
 
+mutex sm_mut;
+struct SendParams
+{
+	SOCKET socket;
+	CHAR* str;
+	INT len;
+	~SendParams()
+	{
+		str = nullptr;
+	}
+};
+queue<SendParams> s_messages;
+
 VOID ClientHandle(SOCKET client_socket);
 VOID ShowActiveClients();
+VOID SendThread(bool* isWork);
 
 void main()
 {
@@ -33,6 +50,7 @@ void main()
 	//1) Инициализация WinSOCK:
 	DWORD dwError = 0;
 	CHAR szError[256] = {};
+	
 	cout << "Server\n\n";
 
 	WSADATA wsaDATA;
@@ -100,7 +118,17 @@ void main()
 		WSACleanup();
 		return;
 	}
-
+	bool isWork = true;
+	DWORD hThread_Smanager_IDs = 0;
+	HANDLE hTread_SManager = CreateThread
+	(
+		NULL,
+		NULL,
+		(LPTHREAD_START_ROUTINE)SendThread,
+		(LPVOID)&isWork,
+		NULL,
+		&hThread_Smanager_IDs
+	);
 	do
 	{
 		//6) Принимаем подключение от клиента
@@ -150,9 +178,10 @@ void main()
 			
 		}
 	} while (true);
-
+	isWork = false;
 	WaitForMultipleObjects(g_ActiveClients, hThreads, TRUE, INFINITE);
-	
+	WaitForSingleObject(hTread_SManager, INFINITE);
+
 	//?) Освобождаем ресурсы занятые WinSOCK:
 	closesocket(listen_socket);
 	freeaddrinfo(target);
@@ -191,9 +220,34 @@ VOID ShowActiveClients()
 	SetConsoleCursorPosition(hConsole, info.dwCursorPosition);
 	Sleep(10);
 }
+VOID SendAdd(CHAR sz_message[] , INT index_client)
+{
+	for (int i = 0; i < g_ActiveClients; i++)
+	{
+		if (i != index_client)
+		{
+			SendParams params{client_sockets[i] , sz_message , strlen(sz_message)};
+			s_messages.push(move(params));
+		}
+	}
+}
+VOID SendThread(bool* isWork)
+{
+	do
+	{
+		sm_mut.lock();
+		while (!s_messages.empty())
+		{
+			send(s_messages.front().socket, s_messages.front().str, s_messages.front().len, NULL);
+			s_messages.pop();
+		}
+		sm_mut.unlock();
+	} while (*isWork);
+}
 VOID Broadcast(CHAR sz_message[], INT client_index)
 {
 	INT iResult = 0;
+	
 	for(INT i = 0; i < g_ActiveClients;i++)
 	{
 		if (i != client_index)
@@ -210,6 +264,14 @@ VOID ClientHandle(SOCKET client_socket)
 	INT iReceivedBytes = 0;
 	INT iSendBytes = 0;
 
+	sockaddr_in client_info;
+	int client_info_len = sizeof(client_info);
+	CHAR ip[INET_ADDRSTRLEN] = {};
+	INT port = 0;
+	getpeername(client_socket, (sockaddr*)&client_info, &client_info_len);
+	inet_ntop(AF_INET, &client_info.sin_addr, ip, INET_ADDRSTRLEN);
+	port = ntohs(client_info.sin_port);
+
 	CHAR recv_buffer[MTU] = {};
 	
 	do
@@ -218,7 +280,13 @@ VOID ClientHandle(SOCKET client_socket)
 		iReceivedBytes = recv(client_socket, recv_buffer, MTU, 0);
 		dwError = WSAGetLastError();
 		if (iReceivedBytes > 0)
-			Broadcast(recv_buffer, GetClientIndex(GetCurrentThreadId()));
+		{
+			sprintf(send_buffer , "%s:%d -> %s" ,ip, port , recv_buffer);
+			sm_mut.lock();
+			SendAdd(send_buffer , GetClientIndex(GetCurrentThreadId()));
+			sm_mut.unlock();
+			//Broadcast(send_buffer, GetClientIndex(GetCurrentThreadId()));
+		}
 		{
 			/*
 			cout << "Received " << iReceivedBytes << " " << recv_buffer << endl;
@@ -236,9 +304,12 @@ VOID ClientHandle(SOCKET client_socket)
 	//8) Разрываем TCP-соединение 
 	iResult = shutdown(client_socket, SD_BOTH);
 	dwError = WSAGetLastError();
-	if (iResult != SOCKET_ERROR)cout << "shutdown failed with error:\t" << FormatLastError(dwError , szError) << endl;
+	if (iResult != SOCKET_ERROR)
+		cout << "shutdown failed with error:\t" << FormatLastError(dwError, szError) << endl;
 	
 	closesocket(client_socket);
+	sm_mut.lock();
 	Shift(GetClientIndex(GetCurrentThreadId()));
+	sm_mut.unlock();
 	ExitThread(0);
 }
