@@ -100,7 +100,7 @@ void main()
 	while(true)
 	{
 		cout << std::this_thread::get_id() << "\t";
-		std::this_thread::sleep_for(100ms);
+		//std::this_thread::sleep_for(100ms);
 	}
 }
 
