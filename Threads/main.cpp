@@ -2,16 +2,22 @@
 #include <Windows.h>
 #include <thread>
 #include <chrono>
+#include <mutex>
 using std::cout;
 using std::cin;
 using std::endl;
 using namespace std::chrono_literals;
 
 bool finish = false;
+std::mutex mtx;
+HANDLE ghMutex = NULL;
+
+
 VOID Function()
 {
 	while (!finish)
 	{
+		
 		cout << "Hello Threads " << GetCurrentThreadId() << endl;
 		//system("PAUSE");
 	}
@@ -37,20 +43,31 @@ VOID Plus()
 {
 	while(!finish)
 	{
+		//mtx.lock();
+		WaitForSingleObject(ghMutex, INFINITE);
 		cout << "+ ";
-		std::this_thread::sleep_for(100ms);
+		Sleep(100);
+		ReleaseMutex(ghMutex);
+		//mtx.unlock();
+		//std::this_thread::sleep_for(100ms);
 	}
 }
 VOID Minus()
 {
 	while (!finish)
 	{
+		//mtx.lock();
+		WaitForSingleObject(ghMutex, INFINITE);
 		cout << "- ";
-		std::this_thread::sleep_for(100ms);
+		Sleep(100);
+		ReleaseMutex(ghMutex);
+		//mtx.unlock();
+		//std::this_thread::sleep_for(100ms);
 	}
 }
 //#define WINDOWS_THREADS_1
 //#define WINDOWS_THREADS_2
+//#define CPP_THREADS
 
 void main()
 {
@@ -86,21 +103,39 @@ void main()
 	WaitForSingleObject(hThread, INFINITE);
 
 #endif // WINDOWS_THREADS_2
-	/*std::thread threads[2] = {};
+#ifdef CPP_THREADS
 	cout << "Start" << endl;
-	threads[0] = std::thread(Plus);
-	threads[1] = std::thread(Minus);
+	std::thread thread_plus = std::thread(Plus);
+	std::thread thread_minus = std::thread(Minus);
 	cin.get();
 	finish = true;
 	cout << "End" << endl;
-	for (int i = 0; i < 2; i++)
-		if (threads[i].joinable())
-			threads[i].join();*/
+	if (thread_plus.joinable())thread_plus.join();
+	if (thread_minus.joinable())thread_minus.join();
+#endif // CPP_THREADS
 
-	while(true)
-	{
-		cout << std::this_thread::get_id() << "\t";
-		//std::this_thread::sleep_for(100ms);
-	}
+	ghMutex = CreateMutex(NULL, FALSE, NULL);
+	
+	HANDLE hThreads[2] = {};
+	hThreads[0] = CreateThread
+	(
+		NULL,
+		NULL,
+		(LPTHREAD_START_ROUTINE)Plus,
+		NULL,
+		NULL,
+		0
+	);
+	hThreads[1] = CreateThread
+	(
+		NULL,
+		NULL,
+		(LPTHREAD_START_ROUTINE)Minus,
+		NULL,
+		NULL,
+		0
+	);
+	WaitForMultipleObjects(2, hThreads, TRUE, INFINITE);
+
 }
 
