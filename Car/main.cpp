@@ -8,7 +8,7 @@ using std::cout;
 using std::endl;
 
 #define DEBUG
-#define THREAD_SECURITY_FOR_UNREUSING(hThread , work_status , mutex)\
+#define THREAD_SECURITY_FOR_UNREUSING(hThread , work_status)\
 {\
 	if(hThread != NULL)\
 	{\
