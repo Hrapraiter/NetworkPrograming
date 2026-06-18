@@ -150,7 +150,8 @@ public:
 		char key = 0;
 		do
 		{
-			key = _getch(); // Функция _getch() ожидает  нажатие клавиши и возвоащает её ASCII-код
+			key = 0;
+			if(_kbhit())key = _getch(); // Функция _getch() ожидает  нажатие клавиши и возвоащает её ASCII-код
 			switch(key)
 			{
 			case Enter:
@@ -169,14 +170,15 @@ public:
 				break;
 			case 'I':
 			case 'i':
-				if (!engine.started())startup();
-				else shutdown();
+				if (driver_inside && !engine.started())startup();
+				else if(driver_inside) shutdown();
 				break;
 			case Escape:
 				shutdown();
 				get_out();
 				break;
 			}
+			if (tank.get_fuel_level() == 0 && engine.started())shutdown();
 		} while (key != Escape);
 	}
 	void engine_idle()
@@ -198,7 +200,19 @@ public:
 				SetConsoleTextAttribute(hConsole, 0x07);
 			}
 			cout << endl;
-			cout << "Engine is " << (engine.started() ? "started" : "stoped") << endl;
+			cout << "Engine is ";
+			if(engine.started())
+			{
+				SetConsoleTextAttribute(hConsole, 0x0A);
+				cout << " STARTED " << endl;
+				SetConsoleTextAttribute(hConsole, 0x07);
+			}
+			else
+			{
+				SetConsoleTextAttribute(hConsole, 0x04);
+				cout << " STOPED ";
+				SetConsoleTextAttribute(hConsole, 0x07);
+			}
 			std::this_thread::sleep_for(100ms);
 		}
 	}
