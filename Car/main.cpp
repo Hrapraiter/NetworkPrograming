@@ -15,6 +15,9 @@ using namespace std::chrono_literals;
 #define MIN_TANK_CAPACITY	 20
 #define MAX_TANK_CAPACITY	120
 
+#define MAX_SPEED_LOW_LIMIT		 60
+#define MAX_SPEED_HIGH_LIMIT	400
+
 class Tank
 {
 	const int CAPACITY;
@@ -101,15 +104,28 @@ class Car
 	Engine engine;
 	Tank tank;
 	bool driver_inside;
+	const int MAX_SPEED;
+	int speed = 0;
+	int acceleration;
 	struct
 	{
 		std::mutex mutex;
 		std::thread panel_thread;
 		std::thread engine_idle_thread;
+		std::thread free_weeling_thread;
 	}car_threads;
 public:
-	Car(double consumption, int capacity = 50) :engine(consumption), tank(capacity)
+	Car(double consumption, int capacity = 50, int max_speed = 250) 
+		:engine(consumption), tank(capacity) , 
+		MAX_SPEED
+		(
+			max_speed < MAX_SPEED_LOW_LIMIT ? MAX_SPEED_LOW_LIMIT:
+			max_speed > MAX_SPEED_HIGH_LIMIT ? MAX_SPEED_HIGH_LIMIT:
+			max_speed
+		)
 	{
+		speed = 0;
+		acceleration = MAX_SPEED / 10;
 		driver_inside = false;
 		cout << "Your car is ready to go, press Enter to get in \t" << this << endl;
 	}
@@ -147,6 +163,28 @@ public:
 		if (car_threads.engine_idle_thread.joinable())
 			car_threads.engine_idle_thread.join();
 	}
+	void accelerate()
+	{
+		if(engine.started())
+		{
+			speed += acceleration;
+			if (speed > MAX_SPEED)speed = MAX_SPEED;
+			if (!car_threads.free_weeling_thread.joinable())
+				car_threads.free_weeling_thread = std::thread(&Car::free_weeling, this);
+			std::this_thread::sleep_for(1s);
+		}
+	}
+	void slow_down()
+	{
+		if (speed > 0)
+		{
+			speed -= acceleration;
+			if (speed < 0)speed = 0;
+			if (speed == 0 && car_threads.free_weeling_thread.joinable())
+				car_threads.free_weeling_thread.join();
+			std::this_thread::sleep_for(1s);
+		}
+	}
 	void control()
 	{
 		char key = 0;
@@ -163,7 +201,7 @@ public:
 			case 'F':
 			case 'f':
 				car_threads.mutex.lock();
-				if (!driver_inside && !engine.started())
+				if (!driver_inside && !engine.started() && speed == 0)
 				{
 					double amount;
 					cout << "Введите объём топлива: "; cin >> amount;
@@ -177,13 +215,32 @@ public:
 				if (driver_inside && !engine.started())startup();
 				else if(driver_inside) shutdown();
 				break;
+			case 'W':
+			case 'w':
+				accelerate();
+				break;
+			case 'S':
+			case 's':
+				slow_down();
+				break;
 			case Escape:
+				speed = 0;
 				shutdown();
 				get_out();
 				break;
 			}
+			if (speed < 0)speed = 0;
+			if (speed == 0 && car_threads.free_weeling_thread.joinable())car_threads.free_weeling_thread.join();
 			if (tank.get_fuel_level() == 0 && engine.started())shutdown();
 		} while (key != Escape);
+	}
+	void free_weeling()
+	{
+		while(speed > 0)
+		{
+			speed--;
+			std::this_thread::sleep_for(1s);
+		}
 	}
 	void engine_idle()
 	{
@@ -205,6 +262,7 @@ public:
 
 		cout << "Fuel level:\t    liters." << endl;
 		cout << "Engine is " << endl;
+		cout << "Speed:\t\tkm/h." << endl;
 
 		while (driver_inside)
 		{
@@ -224,8 +282,12 @@ public:
 			
 			//cout << endl;
 			SetConsoleCursorPosition(hConsole, COORD{ 12,1 });
-			cout << (engine.started() ? "started" : "stoped");
+			cout << (engine.started() ? "started" : "stoped ");
 			
+			SetConsoleCursorPosition(hConsole, COORD{ 9 , 2 });
+			cout.width(4);
+			cout << speed;
+
 			car_threads.mutex.unlock();
 			std::this_thread::sleep_for(100ms);
 		}
