@@ -2,6 +2,7 @@
 #include <iostream>
 #include <conio.h>
 #include <thread>
+#include <mutex>
 #include <chrono>
 using std::cin;
 using std::cout;
@@ -102,6 +103,7 @@ class Car
 	bool driver_inside;
 	struct
 	{
+		std::mutex mutex;
 		std::thread panel_thread;
 		std::thread engine_idle_thread;
 	}car_threads;
@@ -160,13 +162,15 @@ public:
 				break;
 			case 'F':
 			case 'f':
-				if (!driver_inside || !engine.started())
+				car_threads.mutex.lock();
+				if (!driver_inside && !engine.started())
 				{
 					double amount;
 					cout << "¬ведите объЄм топлива: "; cin >> amount;
 					tank.fill(amount);
 				}
-				else cout << "нужно заглушить двигатель и выйти из машины, у нас только самообслуживание." << endl;
+				else cout << "\nнужно заглушить двигатель и выйти из машины, у нас только самообслуживание." << endl;
+				car_threads.mutex.unlock();
 				break;
 			case 'I':
 			case 'i':
@@ -189,32 +193,44 @@ public:
 	void panel()
 	{
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		
+		CONSOLE_CURSOR_INFO cursor_info;
+		GetConsoleCursorInfo(hConsole, &cursor_info);
+		cursor_info.bVisible = FALSE;
+		SetConsoleCursorInfo(hConsole, &cursor_info);
+
+		CONSOLE_SCREEN_BUFFER_INFO current_state;
+		GetConsoleScreenBufferInfo(hConsole, &current_state);
+		system("CLS");
+
+		cout << "Fuel level:\t    liters." << endl;
+		cout << "Engine is " << endl;
+
 		while (driver_inside)
 		{
-			system("CLS");
-			cout << "Fuel level: " << tank.get_fuel_level() << " liters.\t";
+			car_threads.mutex.lock();
+			SetConsoleCursorPosition(hConsole, COORD{ 12,0 });
+			cout << tank.get_fuel_level();
+
+			//system("CLS");
+			//cout << "Fuel level: " << tank.get_fuel_level() << " liters.\t";
 			if (tank.get_fuel_level() < 5)
 			{
+				SetConsoleCursorPosition(hConsole, COORD{ 32 , 0 });
 				SetConsoleTextAttribute(hConsole, 0x4F);
 				cout << " LOW FUEL ";
 				SetConsoleTextAttribute(hConsole, 0x07);
 			}
-			cout << endl;
-			cout << "Engine is ";
-			if(engine.started())
-			{
-				SetConsoleTextAttribute(hConsole, 0x0A);
-				cout << " STARTED " << endl;
-				SetConsoleTextAttribute(hConsole, 0x07);
-			}
-			else
-			{
-				SetConsoleTextAttribute(hConsole, 0x04);
-				cout << " STOPED ";
-				SetConsoleTextAttribute(hConsole, 0x07);
-			}
+			
+			//cout << endl;
+			SetConsoleCursorPosition(hConsole, COORD{ 12,1 });
+			cout << (engine.started() ? "started" : "stoped");
+			
+			car_threads.mutex.unlock();
 			std::this_thread::sleep_for(100ms);
 		}
+		cursor_info.bVisible = TRUE;
+		SetConsoleCursorInfo(hConsole, &cursor_info);
 	}
 };
 

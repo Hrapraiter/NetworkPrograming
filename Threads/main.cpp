@@ -46,7 +46,7 @@ VOID Plus()
 		//mtx.lock();
 		WaitForSingleObject(ghMutex, INFINITE);
 		cout << "+ ";
-		Sleep(100);
+		Sleep(10);
 		ReleaseMutex(ghMutex);
 		//mtx.unlock();
 		//std::this_thread::sleep_for(100ms);
@@ -59,7 +59,7 @@ VOID Minus()
 		//mtx.lock();
 		WaitForSingleObject(ghMutex, INFINITE);
 		cout << "- ";
-		Sleep(100);
+		Sleep(10);
 		ReleaseMutex(ghMutex);
 		//mtx.unlock();
 		//std::this_thread::sleep_for(100ms);
